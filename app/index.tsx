@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { fetchIndianContent } from '../app-example/constants/tmdb';
+import { fetchIndianContent, fetchOTTContent, OTT_PLATFORMS } from '../app-example/constants/tmdb';
 import { FilterPill } from '../app-example/components/ui';
 
 function useWatchlist() {
@@ -32,45 +32,65 @@ function useWatchlist() {
 }
 
 const YEARS = ['Any Year', '2026', '2025', '2024', '2023', '2022'];
-const MONTHS = ['Any Month', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const LANGUAGES = ['All', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'English'];
+const MONTHS = ['May · Jun', 'Any Month', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const LANGUAGES = ['All', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'English', 'Bengali', 'Marathi', 'Punjabi'];
+
+const now = new Date();
+const CURRENT_MONTH = now.toLocaleString('en', { month: 'short' });
+const CURRENT_YEAR = String(now.getFullYear());
+const PREV_MONTH = new Date(now.getFullYear(), now.getMonth() - 1).toLocaleString('en', { month: 'short' });
 
 export default function App() {
   const { watched, favs, toggleWatched, toggleFav } = useWatchlist();
   const [catalog, setCatalog] = useState([]);
+  const [ottCatalog, setOttCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ottLoading, setOttLoading] = useState(false);
   const [tab, setTab] = useState('discover');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState('Any Year');
-  const [monthFilter, setMonthFilter] = useState('Any Month');
+  const [yearFilter, setYearFilter] = useState(CURRENT_YEAR);
+  const [monthFilter, setMonthFilter] = useState('May · Jun');
   const [langFilter, setLangFilter] = useState('All');
+  const [selectedOTT, setSelectedOTT] = useState(OTT_PLATFORMS[0]);
   const router = useRouter();
 
   useEffect(() => {
-    fetchIndianContent().then(data => {
-      setCatalog(data);
-      setLoading(false);
-    });
+    fetchIndianContent().then(data => { setCatalog(data); setLoading(false); });
   }, []);
 
-  const filtered = catalog.filter(item => {
+  useEffect(() => {
+    if (tab === 'ott') {
+      setOttLoading(true);
+      fetchOTTContent(selectedOTT.id).then(data => { setOttCatalog(data); setOttLoading(false); });
+    }
+  }, [tab, selectedOTT]);
+
+  const sourceData = tab === 'ott' ? ottCatalog : catalog;
+
+  const filtered = sourceData.filter(item => {
     if (tab === 'discover' && watched.includes(item.id)) return false;
     if (tab === 'favourites' && !favs.includes(item.id)) return false;
     if (tab === 'watched' && !watched.includes(item.id)) return false;
-    if (typeFilter !== 'all' && item.type !== typeFilter) return false;
-    if (yearFilter !== 'Any Year' && String(item.year) !== yearFilter) return false;
-    if (monthFilter !== 'Any Month' && item.month !== monthFilter) return false;
+    if (tab === 'theatres') {
+      if (!item.inTheatres) return false;
+      if (item.type !== 'movie') return false;
+    }
+    if (tab !== 'theatres' && tab !== 'ott' && typeFilter !== 'all' && item.type !== typeFilter) return false;
     if (langFilter !== 'All' && item.lang !== langFilter) return false;
+    if (yearFilter !== 'Any Year' && String(item.year) !== yearFilter) return false;
+    if ((monthFilter === 'Any Month' || monthFilter === 'May · Jun') && yearFilter === CURRENT_YEAR && tab === 'discover') {
+      if (item.month && item.month !== CURRENT_MONTH && item.month !== PREV_MONTH) return false;
+    }
+    if (monthFilter !== 'Any Month' && monthFilter !== 'May · Jun' && item.month !== monthFilter) return false;
     if (search && !item.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }).sort((a, b) => b.rating - a.rating);
+  }).sort((a, b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    return MONTHS.indexOf(b.month || '') - MONTHS.indexOf(a.month || '');
+  });
 
   const unwatched = catalog.filter(x => !watched.includes(x.id)).length;
-
-  const goToDetail = (item) => {
-    router.push({ pathname: '/detail', params: { id: String(item.id), type: item.type } });
-  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -85,34 +105,59 @@ export default function App() {
             <Text style={styles.badgeLabel}>TO WATCH</Text>
           </View>
         </View>
-        <View style={styles.tabs}>
-          {[['discover','🔥 Discover'],['favourites','★ Favs'],['watched','✓ Watched']].map(([t, label]) => (
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+          {[['discover','🔥 Discover'],['ott','📱 OTT'],['theatres','🎭 Theatres'],['favourites','★ Favs'],['watched','✓ Watched']].map(([t, label]) => (
             <TouchableOpacity key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabActive]}>
               <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{label}</Text>
             </TouchableOpacity>
           ))}
-        </View>
-        <TextInput value={search} onChangeText={setSearch} placeholder="🔍  Search..." placeholderTextColor="#444460" style={styles.searchInput} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
-          {[['all','All'],['movie','🎬 Films'],['show','📺 Shows']].map(([v, label]) => (
-            <FilterPill key={v} label={label} active={typeFilter === v} onPress={() => setTypeFilter(v)} />
-          ))}
         </ScrollView>
+
+        {tab === 'ott' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+            {OTT_PLATFORMS.map(p => (
+              <TouchableOpacity
+                key={p.id}
+                onPress={() => setSelectedOTT(p)}
+                style={[styles.ottPill, selectedOTT.id === p.id && { backgroundColor: p.color, borderColor: p.color }]}
+              >
+                <Text style={{ fontSize: 14 }}>{p.emoji}</Text>
+                <Text style={[styles.ottPillText, selectedOTT.id === p.id && { color: '#fff' }]}>{p.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        <TextInput value={search} onChangeText={setSearch} placeholder="🔍  Search..." placeholderTextColor="#444460" style={styles.searchInput} />
+
+        {tab !== 'theatres' && tab !== 'ott' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+            {[['all','All'],['movie','🎬 Films'],['show','📺 Shows']].map(([v, label]) => (
+              <FilterPill key={v} label={label} active={typeFilter === v} onPress={() => setTypeFilter(v)} />
+            ))}
+          </ScrollView>
+        )}
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
           {LANGUAGES.map(l => <FilterPill key={l} label={l} active={langFilter === l} onPress={() => setLangFilter(l)} />)}
         </ScrollView>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
           {YEARS.map(y => <FilterPill key={y} label={y} active={yearFilter === y} onPress={() => setYearFilter(y)} />)}
         </ScrollView>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {MONTHS.map(m => <FilterPill key={m} label={m} active={monthFilter === m} onPress={() => setMonthFilter(m)} />)}
         </ScrollView>
       </View>
 
-      {loading ? (
+      {(loading || ottLoading) ? (
         <View style={styles.empty}>
           <ActivityIndicator size="large" color="#f7b731" />
-          <Text style={{ color: '#888899', marginTop: 12 }}>Loading...</Text>
+          <Text style={{ color: '#888899', marginTop: 12 }}>
+            {ottLoading ? `Loading ${selectedOTT.name}...` : 'Loading...'}
+          </Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.empty}>
@@ -125,20 +170,22 @@ export default function App() {
           data={filtered}
           keyExtractor={item => String(item.id)}
           renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => goToDetail(item)} activeOpacity={0.8}>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/detail', params: { id: String(item.id), type: item.type } })} activeOpacity={0.8}>
               <View style={[styles.card, watched.includes(item.id) && styles.cardWatched, favs.includes(item.id) && styles.cardFav]}>
-                {item.recent && !watched.includes(item.id) && (
-                  <View style={styles.newBadge}><Text style={styles.newBadgeText}>NEW</Text></View>
+                {item.inTheatres && (
+                  <View style={[styles.badge2, { backgroundColor: '#8e44ad' }]}><Text style={styles.badgeText2}>🎭 CINEMA</Text></View>
+                )}
+                {!item.inTheatres && item.recent && !watched.includes(item.id) && (
+                  <View style={[styles.badge2, item.upcoming && { backgroundColor: '#27ae60' }]}><Text style={styles.badgeText2}>{item.upcoming ? 'UPCOMING' : 'NEW'}</Text></View>
                 )}
                 <View style={styles.cardTop}>
-                  {item.poster ? (
-                    <Image source={{ uri: item.poster }} style={styles.poster} />
-                  ) : (
-                    <Text style={{ fontSize: 40 }}>{item.emoji}</Text>
-                  )}
+                  {item.poster
+                    ? <Image source={{ uri: item.poster }} style={styles.poster} />
+                    : <Text style={{ fontSize: 40 }}>{item.emoji}</Text>
+                  }
                   <View style={styles.cardInfo}>
                     <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
-                      <Text style={styles.typeLabel}>{item.type === 'movie' ? '🎬 Film' : '📺 Series'}</Text>
+                      <Text style={styles.typeLabel}>{item.type === 'movie' ? '🎬 FILM' : '📺 SERIES'}</Text>
                       <Text style={styles.langLabel}>{item.lang}</Text>
                     </View>
                     <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
@@ -148,7 +195,7 @@ export default function App() {
                       ))}
                       <Text style={{ color: '#888899', fontSize: 10, marginLeft: 4 }}>{item.rating}/10</Text>
                     </View>
-                    <Text style={{ color: '#888899', fontSize: 10 }}>{item.year} {item.month ? `· ${item.month}` : ''}</Text>
+                    <Text style={{ color: '#888899', fontSize: 10 }}>{item.year}{item.month ? ` · ${item.month}` : ''}</Text>
                   </View>
                 </View>
                 <Text style={styles.desc} numberOfLines={2}>{item.desc}</Text>
@@ -185,11 +232,12 @@ const styles = StyleSheet.create({
   badge: { alignItems: 'flex-end' },
   badgeNum: { fontSize: 22, fontWeight: '900', color: '#f7b731' },
   badgeLabel: { fontSize: 8, color: '#888899', letterSpacing: 1 },
-  tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  tab: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#1a1a3a', alignItems: 'center' },
+  tab: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#1a1a3a', alignItems: 'center', marginRight: 6 },
   tabActive: { backgroundColor: '#f7b731' },
-  tabText: { color: '#888899', fontSize: 11, fontWeight: '700' },
+  tabText: { color: '#888899', fontSize: 10, fontWeight: '700' },
   tabTextActive: { color: '#000' },
+  ottPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1.5, borderColor: '#2a2a4a', backgroundColor: '#1a1a3a', marginRight: 8 },
+  ottPillText: { color: '#888899', fontSize: 11, fontWeight: '700' },
   searchInput: { backgroundColor: '#0a0a1a', borderWidth: 1, borderColor: '#2a2a4a', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: '#fff', fontSize: 13, marginBottom: 10 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   card: { backgroundColor: '#12122a', borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: '#2a2a4a', marginBottom: 12, position: 'relative' },
@@ -198,9 +246,9 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: 'row', gap: 12, marginBottom: 8 },
   poster: { width: 70, height: 100, borderRadius: 8 },
   cardInfo: { flex: 1, justifyContent: 'center' },
-  newBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#e74c3c', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
-  newBadgeText: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
-  typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
+  badge2: { position: 'absolute', top: 12, right: 12, backgroundColor: '#e74c3c', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
+  badgeText2: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 1 },
   langLabel: { color: '#888899', fontSize: 9, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' },
   title: { color: '#fff', fontSize: 15, fontWeight: '800', marginBottom: 6, lineHeight: 20 },
   desc: { color: '#888899', fontSize: 11, lineHeight: 16, marginBottom: 6 },
