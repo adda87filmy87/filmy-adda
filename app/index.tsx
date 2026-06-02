@@ -33,6 +33,7 @@ function useWatchlist() {
 
 const YEARS = ['Any Year', '2026', '2025', '2024', '2023', '2022'];
 const MONTHS = ['Any Month', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const LANGUAGES = ['All', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'English'];
 
 export default function App() {
   const { watched, favs, toggleWatched, toggleFav } = useWatchlist();
@@ -43,6 +44,7 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('Any Year');
   const [monthFilter, setMonthFilter] = useState('Any Month');
+  const [langFilter, setLangFilter] = useState('All');
   const router = useRouter();
 
   useEffect(() => {
@@ -59,6 +61,7 @@ export default function App() {
     if (typeFilter !== 'all' && item.type !== typeFilter) return false;
     if (yearFilter !== 'Any Year' && String(item.year) !== yearFilter) return false;
     if (monthFilter !== 'Any Month' && item.month !== monthFilter) return false;
+    if (langFilter !== 'All' && item.lang !== langFilter) return false;
     if (search && !item.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   }).sort((a, b) => b.rating - a.rating);
@@ -96,6 +99,9 @@ export default function App() {
           ))}
         </ScrollView>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+          {LANGUAGES.map(l => <FilterPill key={l} label={l} active={langFilter === l} onPress={() => setLangFilter(l)} />)}
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
           {YEARS.map(y => <FilterPill key={y} label={y} active={yearFilter === y} onPress={() => setYearFilter(y)} />)}
         </ScrollView>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -112,6 +118,7 @@ export default function App() {
         <View style={styles.empty}>
           <Text style={{ fontSize: 48, marginBottom: 12 }}>🎬</Text>
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Nothing found</Text>
+          <Text style={{ color: '#888899', fontSize: 12, marginTop: 6 }}>Try a different filter</Text>
         </View>
       ) : (
         <FlatList
@@ -130,7 +137,10 @@ export default function App() {
                     <Text style={{ fontSize: 40 }}>{item.emoji}</Text>
                   )}
                   <View style={styles.cardInfo}>
-                    <Text style={styles.typeLabel}>{item.type === 'movie' ? '🎬 Film' : '📺 Series'}</Text>
+                    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
+                      <Text style={styles.typeLabel}>{item.type === 'movie' ? '🎬 Film' : '📺 Series'}</Text>
+                      <Text style={styles.langLabel}>{item.lang}</Text>
+                    </View>
                     <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
                     <View style={{ flexDirection: 'row', gap: 2, marginBottom: 4 }}>
                       {[1,2,3,4,5].map(i => (
@@ -144,18 +154,12 @@ export default function App() {
                 <Text style={styles.desc} numberOfLines={2}>{item.desc}</Text>
                 <Text style={{ color: '#f7b73188', fontSize: 10, fontStyle: 'italic', marginBottom: 10 }}>Tap for details, cast & where to watch →</Text>
                 <View style={styles.btnRow}>
-                  <TouchableOpacity
-                    style={[styles.watchedBtn, watched.includes(item.id) && styles.watchedBtnDone]}
-                    onPress={() => toggleWatched(item.id)}
-                  >
+                  <TouchableOpacity style={[styles.watchedBtn, watched.includes(item.id) && styles.watchedBtnDone]} onPress={() => toggleWatched(item.id)}>
                     <Text style={[styles.watchedBtnText, watched.includes(item.id) && { color: '#444460' }]}>
                       {watched.includes(item.id) ? '✓ Watched' : 'Mark Watched'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.favBtn, favs.includes(item.id) && styles.favBtnActive]}
-                    onPress={() => toggleFav(item.id)}
-                  >
+                  <TouchableOpacity style={[styles.favBtn, favs.includes(item.id) && styles.favBtnActive]} onPress={() => toggleFav(item.id)}>
                     <Text style={{ fontSize: 16, color: favs.includes(item.id) ? '#f7b731' : '#444460' }}>
                       {favs.includes(item.id) ? '★' : '☆'}
                     </Text>
@@ -196,7 +200,8 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1, justifyContent: 'center' },
   newBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#e74c3c', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   newBadgeText: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
-  typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' },
+  typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
+  langLabel: { color: '#888899', fontSize: 9, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' },
   title: { color: '#fff', fontSize: 15, fontWeight: '800', marginBottom: 6, lineHeight: 20 },
   desc: { color: '#888899', fontSize: 11, lineHeight: 16, marginBottom: 6 },
   btnRow: { flexDirection: 'row', gap: 8 },
