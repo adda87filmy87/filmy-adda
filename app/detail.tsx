@@ -41,7 +41,6 @@ export default function DetailScreen() {
 
         const yt = (videoData.results || []).find(v => v.site === 'YouTube' && v.type === 'Trailer');
         setTrailer(yt);
-
         setCast((creditsData.cast || []).slice(0, 8));
 
         const w = await AsyncStorage.getItem('watched');
@@ -93,6 +92,7 @@ export default function DetailScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false}>
+
         {/* Backdrop */}
         {item.backdrop_path && (
           <Image
@@ -101,16 +101,21 @@ export default function DetailScreen() {
           />
         )}
 
-        {/* Back button */}
+        {/* Back button over backdrop */}
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
+        {/* Main content below backdrop */}
         <View style={styles.content}>
-          {/* Poster + Info */}
+
+          {/* Poster + Info row */}
           <View style={styles.topRow}>
             {item.poster_path && (
-              <Image source={{ uri: `https://image.tmdb.org/t/p/w342${item.poster_path}` }} style={styles.poster} />
+              <Image
+                source={{ uri: `https://image.tmdb.org/t/p/w342${item.poster_path}` }}
+                style={styles.poster}
+              />
             )}
             <View style={styles.info}>
               <Text style={styles.typeLabel}>{type === 'show' ? '📺 Series' : '🎬 Film'}</Text>
@@ -121,7 +126,7 @@ export default function DetailScreen() {
                 ))}
                 <Text style={{ color: '#888899', fontSize: 12, marginLeft: 4 }}>{rating}/10</Text>
               </View>
-              <Text style={styles.meta}>{year} {runtime ? `· ${runtime}` : ''}</Text>
+              <Text style={styles.meta}>{year}{runtime ? ` · ${runtime}` : ''}</Text>
               <Text style={styles.meta}>{genres}</Text>
             </View>
           </View>
@@ -130,7 +135,7 @@ export default function DetailScreen() {
           <Text style={styles.sectionTitle}>Overview</Text>
           <Text style={styles.overview}>{item.overview}</Text>
 
-          {/* OTT Providers */}
+          {/* OTT */}
           {providers.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Where to Watch in India</Text>
@@ -149,10 +154,7 @@ export default function DetailScreen() {
           {trailer && (
             <>
               <Text style={styles.sectionTitle}>Trailer</Text>
-              <TouchableOpacity
-                style={styles.trailerBtn}
-                onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)}
-              >
+              <TouchableOpacity style={styles.trailerBtn} onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)}>
                 <Text style={styles.trailerBtnText}>▶ Watch Trailer on YouTube</Text>
               </TouchableOpacity>
             </>
@@ -180,7 +182,7 @@ export default function DetailScreen() {
             </>
           )}
 
-          {/* Action Buttons */}
+          {/* Buttons */}
           <View style={styles.btnRow}>
             <TouchableOpacity style={[styles.watchedBtn, watched && styles.watchedBtnDone]} onPress={toggleWatched}>
               <Text style={[styles.watchedBtnText, watched && { color: '#444460' }]}>{watched ? '✓ Watched' : 'Mark Watched'}</Text>
@@ -189,6 +191,7 @@ export default function DetailScreen() {
               <Text style={{ fontSize: 20, color: fav ? '#f7b731' : '#444460' }}>{fav ? '★' : '☆'}</Text>
             </TouchableOpacity>
           </View>
+
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -197,23 +200,23 @@ export default function DetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#0a0a18' },
-  backdrop: { width: '100%', height: 380, opacity: 0.6 },
-  backBtn: { position: 'absolute', top: 16, left: 16, backgroundColor: '#00000088', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  backdrop: { width: '100%', height: 250, opacity: 0.7 },
+  backBtn: { position: 'absolute', top: 16, left: 16, backgroundColor: '#00000099', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
   backText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   content: { padding: 16 },
-  topRow: { flexDirection: 'row', gap: 14, marginBottom: 20, marginTop: -60 },
-  poster: { width: 110, height: 170, borderRadius: 10, borderWidth: 2, borderColor: '#f7b731' },
-  info: { flex: 1, justifyContent: 'flex-end', paddingBottom: 4 },
+  topRow: { flexDirection: 'row', gap: 14, marginBottom: 20, marginTop: 8 },
+  poster: { width: 110, height: 165, borderRadius: 10, borderWidth: 2, borderColor: '#f7b731' },
+  info: { flex: 1, justifyContent: 'center' },
   typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' },
-  title: { color: '#fff', fontSize: 18, fontWeight: '900', marginBottom: 6, lineHeight: 22 },
-  meta: { color: '#888899', fontSize: 11, marginBottom: 2 },
+  title: { color: '#fff', fontSize: 18, fontWeight: '900', marginBottom: 8, lineHeight: 24 },
+  meta: { color: '#888899', fontSize: 11, marginBottom: 3 },
   sectionTitle: { color: '#f7b731', fontSize: 12, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10, marginTop: 20 },
   overview: { color: '#ccc', fontSize: 13, lineHeight: 20 },
   providerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  providerCard: { alignItems: 'center', width: 60 },
-  providerLogo: { width: 48, height: 48, borderRadius: 10 },
+  providerCard: { alignItems: 'center', width: 64 },
+  providerLogo: { width: 52, height: 52, borderRadius: 12 },
   providerName: { color: '#888899', fontSize: 9, marginTop: 4, textAlign: 'center' },
-  trailerBtn: { backgroundColor: '#e74c3c', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  trailerBtn: { backgroundColor: '#e74c3c', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   trailerBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   castCard: { width: 80, marginRight: 12, alignItems: 'center' },
   castPhoto: { width: 70, height: 70, borderRadius: 35, marginBottom: 6 },
