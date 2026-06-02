@@ -197,7 +197,7 @@ export default function DetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#0a0a18' },
-  backdrop: { width: '100%', height: 320, opacity: 0.6 },
+  backdrop: { width: '100%', height: 380, opacity: 0.6 },
   backBtn: { position: 'absolute', top: 16, left: 16, backgroundColor: '#00000088', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   backText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   content: { padding: 16 },
