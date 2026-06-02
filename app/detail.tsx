@@ -28,28 +28,21 @@ export default function DetailScreen() {
           fetch(`https://api.themoviedb.org/3/${endpoint}/${realId}/videos?api_key=${TMDB_API_KEY}`),
           fetch(`https://api.themoviedb.org/3/${endpoint}/${realId}/credits?api_key=${TMDB_API_KEY}`),
         ]);
-
         const detail = await detailRes.json();
         const providerData = await providerRes.json();
         const videoData = await videoRes.json();
         const creditsData = await creditsRes.json();
-
         setItem(detail);
-
         const inProviders = providerData.results?.IN?.flatrate || providerData.results?.IN?.rent || [];
         setProviders(inProviders.slice(0, 5));
-
         const yt = (videoData.results || []).find(v => v.site === 'YouTube' && v.type === 'Trailer');
         setTrailer(yt);
         setCast((creditsData.cast || []).slice(0, 8));
-
         const w = await AsyncStorage.getItem('watched');
         const f = await AsyncStorage.getItem('favs');
         if (w) setWatched(JSON.parse(w).includes(parseInt(id)));
         if (f) setFav(JSON.parse(f).includes(parseInt(id)));
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) {}
       setLoading(false);
     })();
   }, []);
@@ -93,6 +86,11 @@ export default function DetailScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false}>
 
+        {/* Back button */}
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+
         {/* Backdrop */}
         {item.backdrop_path && (
           <Image
@@ -101,15 +99,10 @@ export default function DetailScreen() {
           />
         )}
 
-        {/* Back button over backdrop */}
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-
-        {/* Main content below backdrop */}
+        {/* All content below backdrop */}
         <View style={styles.content}>
 
-          {/* Poster + Info row */}
+          {/* Poster + title side by side */}
           <View style={styles.topRow}>
             {item.poster_path && (
               <Image
@@ -126,61 +119,57 @@ export default function DetailScreen() {
                 ))}
                 <Text style={{ color: '#888899', fontSize: 12, marginLeft: 4 }}>{rating}/10</Text>
               </View>
-              <Text style={styles.meta}>{year}{runtime ? ` · ${runtime}` : ''}</Text>
-              <Text style={styles.meta}>{genres}</Text>
+              {year ? <Text style={styles.meta}>{year}{runtime ? ` · ${runtime}` : ''}</Text> : null}
+              {genres ? <Text style={styles.meta}>{genres}</Text> : null}
             </View>
           </View>
 
           {/* Overview */}
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <Text style={styles.overview}>{item.overview}</Text>
+          {item.overview ? <>
+            <Text style={styles.sectionTitle}>Overview</Text>
+            <Text style={styles.overview}>{item.overview}</Text>
+          </> : null}
 
           {/* OTT */}
-          {providers.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Where to Watch in India</Text>
-              <View style={styles.providerRow}>
-                {providers.map(p => (
-                  <View key={p.provider_id} style={styles.providerCard}>
-                    <Image source={{ uri: `https://image.tmdb.org/t/p/w92${p.logo_path}` }} style={styles.providerLogo} />
-                    <Text style={styles.providerName} numberOfLines={1}>{p.provider_name}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
+          {providers.length > 0 && <>
+            <Text style={styles.sectionTitle}>Where to Watch in India</Text>
+            <View style={styles.providerRow}>
+              {providers.map(p => (
+                <View key={p.provider_id} style={styles.providerCard}>
+                  <Image source={{ uri: `https://image.tmdb.org/t/p/w92${p.logo_path}` }} style={styles.providerLogo} />
+                  <Text style={styles.providerName} numberOfLines={1}>{p.provider_name}</Text>
+                </View>
+              ))}
+            </View>
+          </>}
 
           {/* Trailer */}
-          {trailer && (
-            <>
-              <Text style={styles.sectionTitle}>Trailer</Text>
-              <TouchableOpacity style={styles.trailerBtn} onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)}>
-                <Text style={styles.trailerBtnText}>▶ Watch Trailer on YouTube</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          {trailer && <>
+            <Text style={styles.sectionTitle}>Trailer</Text>
+            <TouchableOpacity style={styles.trailerBtn} onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)}>
+              <Text style={styles.trailerBtnText}>▶ Watch Trailer on YouTube</Text>
+            </TouchableOpacity>
+          </>}
 
           {/* Cast */}
-          {cast.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Cast</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {cast.map(c => (
-                  <View key={c.id} style={styles.castCard}>
-                    {c.profile_path ? (
-                      <Image source={{ uri: `https://image.tmdb.org/t/p/w92${c.profile_path}` }} style={styles.castPhoto} />
-                    ) : (
-                      <View style={[styles.castPhoto, { backgroundColor: '#2a2a4a', alignItems: 'center', justifyContent: 'center' }]}>
-                        <Text style={{ fontSize: 24 }}>👤</Text>
-                      </View>
-                    )}
-                    <Text style={styles.castName} numberOfLines={2}>{c.name}</Text>
-                    <Text style={styles.castChar} numberOfLines={1}>{c.character}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </>
-          )}
+          {cast.length > 0 && <>
+            <Text style={styles.sectionTitle}>Cast</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {cast.map(c => (
+                <View key={c.id} style={styles.castCard}>
+                  {c.profile_path ? (
+                    <Image source={{ uri: `https://image.tmdb.org/t/p/w92${c.profile_path}` }} style={styles.castPhoto} />
+                  ) : (
+                    <View style={[styles.castPhoto, { backgroundColor: '#2a2a4a', alignItems: 'center', justifyContent: 'center' }]}>
+                      <Text style={{ fontSize: 24 }}>👤</Text>
+                    </View>
+                  )}
+                  <Text style={styles.castName} numberOfLines={2}>{c.name}</Text>
+                  <Text style={styles.castChar} numberOfLines={1}>{c.character}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </>}
 
           {/* Buttons */}
           <View style={styles.btnRow}>
@@ -200,15 +189,15 @@ export default function DetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#0a0a18' },
-  backdrop: { width: '100%', height: 250, opacity: 0.7 },
-  backBtn: { position: 'absolute', top: 16, left: 16, backgroundColor: '#00000099', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  backBtn: { position: 'absolute', top: 16, left: 16, zIndex: 10, backgroundColor: '#00000099', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
   backText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  backdrop: { width: '100%', height: 240, opacity: 0.8 },
   content: { padding: 16 },
-  topRow: { flexDirection: 'row', gap: 14, marginBottom: 20, marginTop: 8 },
+  topRow: { flexDirection: 'row', gap: 14, marginBottom: 20, marginTop: 12 },
   poster: { width: 110, height: 165, borderRadius: 10, borderWidth: 2, borderColor: '#f7b731' },
-  info: { flex: 1, justifyContent: 'center' },
-  typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' },
-  title: { color: '#fff', fontSize: 18, fontWeight: '900', marginBottom: 8, lineHeight: 24 },
+  info: { flex: 1 },
+  typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 6, textTransform: 'uppercase' },
+  title: { color: '#fff', fontSize: 17, fontWeight: '900', marginBottom: 8, lineHeight: 23 },
   meta: { color: '#888899', fontSize: 11, marginBottom: 3 },
   sectionTitle: { color: '#f7b731', fontSize: 12, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10, marginTop: 20 },
   overview: { color: '#ccc', fontSize: 13, lineHeight: 20 },
