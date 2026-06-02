@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { fetchIndianContent } from '../app-example/constants/tmdb';
 import { FilterPill } from '../app-example/components/ui';
 
@@ -30,46 +31,6 @@ function useWatchlist() {
   return { watched, favs, toggleWatched, toggleFav };
 }
 
-function ContentCard({ item, watched, fav, onWatched, onFav }) {
-  const isWatched = watched.includes(item.id);
-  const isFav = fav.includes(item.id);
-  const filled = Math.round(item.rating / 2);
-  return (
-    <View style={[styles.card, isWatched && styles.cardWatched, isFav && styles.cardFav]}>
-      {item.recent && !isWatched && (
-        <View style={styles.newBadge}><Text style={styles.newBadgeText}>NEW</Text></View>
-      )}
-      <View style={styles.cardTop}>
-        {item.poster ? (
-          <Image source={{ uri: item.poster }} style={styles.poster} />
-        ) : (
-          <Text style={styles.emoji}>{item.emoji}</Text>
-        )}
-        <View style={styles.cardInfo}>
-          <Text style={styles.typeLabel}>{item.type === 'movie' ? '🎬 Film' : '📺 Series'}</Text>
-          <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-          <View style={{ flexDirection: 'row', gap: 2, marginBottom: 4 }}>
-            {[1,2,3,4,5].map(i => (
-              <Text key={i} style={{ color: i <= filled ? '#FFD700' : '#444460', fontSize: 11 }}>★</Text>
-            ))}
-            <Text style={{ color: '#888899', fontSize: 10, marginLeft: 4 }}>{item.rating}/10</Text>
-          </View>
-          <Text style={styles.year}>{item.year} {item.month ? `· ${item.month}` : ''}</Text>
-        </View>
-      </View>
-      <Text style={styles.desc} numberOfLines={2}>{item.desc}</Text>
-      <View style={styles.btnRow}>
-        <TouchableOpacity style={[styles.watchedBtn, isWatched && styles.watchedBtnDone]} onPress={() => onWatched(item.id)}>
-          <Text style={[styles.watchedBtnText, isWatched && { color: '#444460' }]}>{isWatched ? '✓ Watched' : 'Mark Watched'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.favBtn, isFav && styles.favBtnActive]} onPress={() => onFav(item.id)}>
-          <Text style={{ fontSize: 16, color: isFav ? '#f7b731' : '#444460' }}>{isFav ? '★' : '☆'}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
 const YEARS = ['Any Year', '2026', '2025', '2024', '2023', '2022'];
 const MONTHS = ['Any Month', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -82,6 +43,7 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('Any Year');
   const [monthFilter, setMonthFilter] = useState('Any Month');
+  const router = useRouter();
 
   useEffect(() => {
     fetchIndianContent().then(data => {
@@ -103,6 +65,10 @@ export default function App() {
 
   const unwatched = catalog.filter(x => !watched.includes(x.id)).length;
 
+  const goToDetail = (item) => {
+    router.push({ pathname: '/detail', params: { id: String(item.id), type: item.type } });
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
@@ -116,7 +82,6 @@ export default function App() {
             <Text style={styles.badgeLabel}>TO WATCH</Text>
           </View>
         </View>
-
         <View style={styles.tabs}>
           {[['discover','🔥 Discover'],['favourites','★ Favs'],['watched','✓ Watched']].map(([t, label]) => (
             <TouchableOpacity key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabActive]}>
@@ -124,44 +89,81 @@ export default function App() {
             </TouchableOpacity>
           ))}
         </View>
-
         <TextInput value={search} onChangeText={setSearch} placeholder="🔍  Search..." placeholderTextColor="#444460" style={styles.searchInput} />
-
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
           {[['all','All'],['movie','🎬 Films'],['show','📺 Shows']].map(([v, label]) => (
             <FilterPill key={v} label={label} active={typeFilter === v} onPress={() => setTypeFilter(v)} />
           ))}
         </ScrollView>
-
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
-          {YEARS.map(y => (
-            <FilterPill key={y} label={y} active={yearFilter === y} onPress={() => setYearFilter(y)} />
-          ))}
+          {YEARS.map(y => <FilterPill key={y} label={y} active={yearFilter === y} onPress={() => setYearFilter(y)} />)}
         </ScrollView>
-
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {MONTHS.map(m => (
-            <FilterPill key={m} label={m} active={monthFilter === m} onPress={() => setMonthFilter(m)} />
-          ))}
+          {MONTHS.map(m => <FilterPill key={m} label={m} active={monthFilter === m} onPress={() => setMonthFilter(m)} />)}
         </ScrollView>
       </View>
 
       {loading ? (
         <View style={styles.empty}>
           <ActivityIndicator size="large" color="#f7b731" />
-          <Text style={{ color: '#888899', marginTop: 12 }}>Loading from TMDB...</Text>
+          <Text style={{ color: '#888899', marginTop: 12 }}>Loading...</Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={{ fontSize: 48, marginBottom: 12 }}>🎬</Text>
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Nothing found</Text>
-          <Text style={{ color: '#888899', fontSize: 12, marginTop: 6 }}>Try a different filter</Text>
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={item => String(item.id)}
-          renderItem={({ item }) => <ContentCard item={item} watched={watched} fav={favs} onWatched={toggleWatched} onFav={toggleFav} />}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => goToDetail(item)} activeOpacity={0.8}>
+              <View style={[styles.card, watched.includes(item.id) && styles.cardWatched, favs.includes(item.id) && styles.cardFav]}>
+                {item.recent && !watched.includes(item.id) && (
+                  <View style={styles.newBadge}><Text style={styles.newBadgeText}>NEW</Text></View>
+                )}
+                <View style={styles.cardTop}>
+                  {item.poster ? (
+                    <Image source={{ uri: item.poster }} style={styles.poster} />
+                  ) : (
+                    <Text style={{ fontSize: 40 }}>{item.emoji}</Text>
+                  )}
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.typeLabel}>{item.type === 'movie' ? '🎬 Film' : '📺 Series'}</Text>
+                    <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
+                    <View style={{ flexDirection: 'row', gap: 2, marginBottom: 4 }}>
+                      {[1,2,3,4,5].map(i => (
+                        <Text key={i} style={{ color: i <= Math.round(item.rating/2) ? '#FFD700' : '#444460', fontSize: 11 }}>★</Text>
+                      ))}
+                      <Text style={{ color: '#888899', fontSize: 10, marginLeft: 4 }}>{item.rating}/10</Text>
+                    </View>
+                    <Text style={{ color: '#888899', fontSize: 10 }}>{item.year} {item.month ? `· ${item.month}` : ''}</Text>
+                  </View>
+                </View>
+                <Text style={styles.desc} numberOfLines={2}>{item.desc}</Text>
+                <Text style={{ color: '#f7b73188', fontSize: 10, fontStyle: 'italic', marginBottom: 10 }}>Tap for details, cast & where to watch →</Text>
+                <View style={styles.btnRow}>
+                  <TouchableOpacity
+                    style={[styles.watchedBtn, watched.includes(item.id) && styles.watchedBtnDone]}
+                    onPress={() => toggleWatched(item.id)}
+                  >
+                    <Text style={[styles.watchedBtnText, watched.includes(item.id) && { color: '#444460' }]}>
+                      {watched.includes(item.id) ? '✓ Watched' : 'Mark Watched'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.favBtn, favs.includes(item.id) && styles.favBtnActive]}
+                    onPress={() => toggleFav(item.id)}
+                  >
+                    <Text style={{ fontSize: 16, color: favs.includes(item.id) ? '#f7b731' : '#444460' }}>
+                      {favs.includes(item.id) ? '★' : '☆'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
         />
@@ -191,14 +193,12 @@ const styles = StyleSheet.create({
   cardFav: { borderColor: '#f7b731' },
   cardTop: { flexDirection: 'row', gap: 12, marginBottom: 8 },
   poster: { width: 70, height: 100, borderRadius: 8 },
-  emoji: { fontSize: 40 },
   cardInfo: { flex: 1, justifyContent: 'center' },
   newBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#e74c3c', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   newBadgeText: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
   typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' },
   title: { color: '#fff', fontSize: 15, fontWeight: '800', marginBottom: 6, lineHeight: 20 },
-  year: { color: '#888899', fontSize: 10 },
-  desc: { color: '#888899', fontSize: 11, lineHeight: 16, marginBottom: 10 },
+  desc: { color: '#888899', fontSize: 11, lineHeight: 16, marginBottom: 6 },
   btnRow: { flexDirection: 'row', gap: 8 },
   watchedBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: '#11998e' },
   watchedBtnDone: { backgroundColor: '#222' },
