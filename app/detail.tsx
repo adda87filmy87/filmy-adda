@@ -110,7 +110,7 @@ export default function DetailScreen() {
           {/* Poster + Info */}
           <View style={styles.topRow}>
             {item.poster_path && (
-              <Image source={{ uri: `https://image.tmdb.org/t/p/w200${item.poster_path}` }} style={styles.poster} />
+              <Image source={{ uri: `https://image.tmdb.org/t/p/w342${item.poster_path}` }} style={styles.poster} />
             )}
             <View style={styles.info}>
               <Text style={styles.typeLabel}>{type === 'show' ? '📺 Series' : '🎬 Film'}</Text>
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   backText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   content: { padding: 16 },
   topRow: { flexDirection: 'row', gap: 14, marginBottom: 20, marginTop: -40 },
-  poster: { width: 100, height: 150, borderRadius: 10, borderWidth: 2, borderColor: '#f7b731' },
+  poster: { width: 110, height: 165, borderRadius: 10, borderWidth: 2, borderColor: '#f7b731' },
   info: { flex: 1, justifyContent: 'flex-end', paddingBottom: 4 },
   typeLabel: { color: '#f7b731', fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' },
   title: { color: '#fff', fontSize: 18, fontWeight: '900', marginBottom: 6, lineHeight: 22 },
